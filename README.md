@@ -1,15 +1,11 @@
-# ISI Frontend v6 - Alocação de insumos em composição
+# ISI Frontend v8 - Performance
 
-## Alterações
+## Principais melhorias
 
-Na tela de análise:
-
-- Itens OO já trazem a composição fixa do orçamento.
-- Itens BD/IN exigem alocação antes da aprovação.
-- O analista pode:
-  - selecionar uma composição existente da obra;
-  - criar uma nova composição informando EAP e nome.
-- A alocação é enviada junto com a decisão em bloco.
+- A abertura/teste de conexão usa `inicializarApp`, reduzindo 3 chamadas para 1.
+- A tela de análise usa `getDadosAnalise`, reduzindo chamadas de itens + composições para 1.
+- Após criar solicitação, o frontend não recarrega automaticamente toda a lista de solicitações.
+- Mantém toast/loading visual.
 
 ## Como aplicar
 
@@ -19,3 +15,5 @@ Substitua no GitHub Pages:
 - `assets/style.css`
 - `assets/app.js`
 - `.nojekyll`
+
+Depois recarregue a página com Ctrl+F5.
