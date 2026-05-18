@@ -681,3 +681,15 @@ body.busy button:not(.nav) { pointer-events:none; }
     grid-template-columns: 1fr;
   }
 }
+
+
+/* v7 - feedback sobre composições carregadas */
+.composition-info {
+  padding: 10px 12px;
+  border: 1px solid #c8e6c9;
+  background: #f1f8f2;
+  border-radius: 12px;
+  color: #1b5e20;
+  font-size: 13px;
+  font-weight: 700;
+}
