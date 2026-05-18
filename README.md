@@ -1,38 +1,23 @@
-# ISI Frontend v4 - Análise/Aprovação
+# ISI Frontend v5 - Análise em bloco
 
-Esta versão adiciona a tela **Análise**, com ações por item:
+## Alterações
 
-- Aprovar;
-- Recusar;
-- Marcar incluído no Informakon;
-- Marcar compra solicitada.
+- Tela de análise em formato de tabela, menos espaçosa.
+- Itens agrupados por composição/EAP.
+- Origem abreviada:
+  - OO = Orçamento da Obra
+  - BD = Banco de Dados / Banco Geral
+  - IN = Insumo Novo
+- Removido botão de compra solicitada da análise.
+- Removido campo de número da solicitação de compra.
+- Aprovação significa saldo incluído no Informakon.
+- Decisões são marcadas por item e confirmadas em lote pelo botão "Confirmar decisões".
 
-## Como aplicar
+## Aplicação
 
 Substitua no GitHub Pages:
 
-```text
-index.html
-assets/style.css
-assets/app.js
-.nojekyll
-```
-
-## Dependência
-
-Use junto com o backend v6, pois a tela de análise usa os endpoints:
-
-```text
-listarItensAnalise
-listarSolicitacaoDetalhada
-```
-
-## Teste recomendado
-
-1. Testar conexão.
-2. Criar uma solicitação com 2 itens.
-3. Ir em Análise.
-4. Clicar em Carregar itens.
-5. Aprovar um item.
-6. Marcar incluído no Informakon.
-7. Marcar compra solicitada.
+- index.html
+- assets/style.css
+- assets/app.js
+- .nojekyll

@@ -28,7 +28,7 @@
 
       <div class="side-card">
         <strong>Fluxo</strong>
-        <span>Solicitação em bloco → análise por item → inclusão no Informakon → compra solicitada.</span>
+        <span>Solicitação em bloco → análise em tabela → aprovação/recusa em lote.</span>
       </div>
     </aside>
 
@@ -262,13 +262,16 @@
         <div class="card">
           <div class="card-head">
             <div>
-              <h3>Análise e aprovação dos itens</h3>
-              <small>Cada item pode ter decisão independente dentro da mesma solicitação.</small>
+              <h3>Análise em bloco por composição</h3>
+              <small>Marque Aprovar ou Recusar em cada item e confirme tudo ao final.</small>
             </div>
-            <button class="btn-secondary" id="btnLoadAnalise">Carregar itens</button>
+            <div class="actions">
+              <button class="btn-secondary" id="btnLoadAnalise">Carregar itens</button>
+              <button class="btn-primary" id="btnProcessarAnalise">Confirmar decisões</button>
+            </div>
           </div>
 
-          <div class="card-body">
+          <div class="card-body compact-analysis">
             <div class="form-grid">
               <div class="field">
                 <label>Filtrar por obra</label>
@@ -277,22 +280,21 @@
               <div class="field">
                 <label>Status</label>
                 <select id="statusAnalise">
+                  <option value="pendentes">Pendentes de análise</option>
                   <option value="">Todos</option>
-                  <option value="pendentes">Pendentes</option>
                   <option value="Novo">Novo</option>
-                  <option value="Aprovado">Aprovado</option>
-                  <option value="Incluído no Informakon">Incluído no Informakon</option>
-                  <option value="Compra solicitada">Compra solicitada</option>
+                  <option value="Incluído no Informakon">Aprovado / incluído</option>
                   <option value="Recusado">Recusado</option>
                 </select>
               </div>
             </div>
             <div class="hint">
-              Fluxo recomendado: <strong>Aprovar</strong> → <strong>Marcar incluído no Informakon</strong> → obra marca <strong>Compra solicitada</strong>.
+              <strong>Regra:</strong> aprovar significa que o saldo já foi incluído no Informakon. A quantidade usada é a solicitada no item.
+              Os itens são agrupados por composição para facilitar o ajuste no Informakon.
             </div>
           </div>
 
-          <div id="analiseCards" class="analysis-list">
+          <div id="analiseTableGroups" class="analysis-table-groups">
             <div class="empty-line">Clique em Carregar itens.</div>
           </div>
         </div>
