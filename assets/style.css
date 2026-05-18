@@ -623,3 +623,61 @@ body.busy button:not(.nav) { pointer-events:none; }
     flex-direction: column;
   }
 }
+
+
+
+/* v6 - Alocação de itens BD/IN em composição */
+.allocation-cell {
+  min-width: 220px;
+  display: grid;
+  gap: 6px;
+}
+
+.allocation-fixed {
+  min-width: 180px;
+}
+
+.allocation-fixed strong {
+  display: block;
+  color: var(--g900);
+  margin-bottom: 2px;
+}
+
+.allocation-fixed small {
+  display: block;
+  color: var(--z500);
+  line-height: 1.25;
+}
+
+.allocation-select {
+  min-width: 210px;
+  padding: 7px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.allocation-inputs {
+  display: grid;
+  grid-template-columns: 80px minmax(180px, 1fr);
+  gap: 6px;
+}
+
+.allocation-inputs.hidden {
+  display: none;
+}
+
+.allocation-inputs input {
+  padding: 7px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.analysis-table td:nth-child(5) {
+  min-width: 230px;
+}
+
+@media (max-width: 900px) {
+  .allocation-inputs {
+    grid-template-columns: 1fr;
+  }
+}

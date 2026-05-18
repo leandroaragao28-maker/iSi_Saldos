@@ -5,6 +5,7 @@ const state = {
   selectedItem: null,
   itens: [],
   analiseItens: [],
+  composicoesAnalise: [],
   timer: null
 };
 
@@ -33,7 +34,7 @@ function setupNavigation() {
         dashboard: ['Dashboard', 'Resumo do sistema e conexão com a API.'],
         bases: ['Bases CSV', 'Importe orçamento por obra e banco geral.'],
         nova: ['Nova Solicitação', 'Crie uma solicitação com vários insumos.'],
-        analise: ['Análise', 'Aprovação/recusa em lote, agrupada por composição.'],
+        analise: ['Análise', 'Alocação de novos insumos e aprovação/recusa em lote.'],
         solicitacoes: ['Solicitações', 'Consulte os IDs criados.'],
         config: ['Configuração', 'Conecte o frontend ao Apps Script.']
       };
@@ -384,6 +385,13 @@ async function loadAnalise() {
       payload.statusItem = status;
     }
 
+    if (idObra) {
+      const compsResponse = await api('listarComposicoesObra', { idObra });
+      state.composicoesAnalise = compsResponse.data || [];
+    } else {
+      state.composicoesAnalise = [];
+    }
+
     const response = await api('listarItensAnalise', payload);
     state.analiseItens = response.data || [];
     renderAnalise();
@@ -423,6 +431,7 @@ function renderAnalise() {
               <th>Orig.</th>
               <th>Código</th>
               <th>Insumo</th>
+              <th>Alocação</th>
               <th>Unid.</th>
               <th>Qtd. orçada</th>
               <th>Qtd. solicitada</th>
@@ -500,6 +509,7 @@ function renderAnalysisRow(item) {
         ${esc(item.descricaoInsumo || '')}
         <small class="line-note">${esc(item.motivoItem || '')}${item.observacaoSolicitante ? ' · ' + esc(item.observacaoSolicitante) : ''}</small>
       </td>
+      <td>${renderAlocacaoCell(item, idx, disabled)}</td>
       <td>${esc(item.unidade || '')}</td>
       <td>${fmt(qtdOrcada)}</td>
       <td><strong>${fmt(qtdSolicitada)}</strong></td>
@@ -511,6 +521,75 @@ function renderAnalysisRow(item) {
     </tr>
   `;
 }
+
+function renderAlocacaoCell(item, idx, disabled) {
+  const origem = origemAbrev(item.origemInsumo);
+
+  if (origem === 'OO') {
+    return `
+      <div class="allocation-fixed">
+        <strong>${esc(item.eap || '-')}</strong>
+        <small>${esc(item.itemOrcamentario || 'Composição não informada')}</small>
+        <input type="hidden" id="alocEap_${idx}" value="${esc(item.eap || '')}">
+        <input type="hidden" id="alocItem_${idx}" value="${esc(item.itemOrcamentario || '')}">
+      </div>
+    `;
+  }
+
+  const options = state.composicoesAnalise.map((comp, compIndex) => {
+    return `<option value="${compIndex}">${esc(comp.eap || '-')} - ${esc(comp.itemOrcamentario || '')}</option>`;
+  }).join('');
+
+  return `
+    <div class="allocation-cell">
+      <select id="alocSelect_${idx}" class="allocation-select" onchange="onAlocacaoChange(${idx})" ${disabled}>
+        <option value="">Selecionar composição...</option>
+        ${options}
+        <option value="__nova__">+ Nova composição</option>
+      </select>
+
+      <div id="alocInputs_${idx}" class="allocation-inputs hidden">
+        <input id="alocEap_${idx}" placeholder="EAP" ${disabled}>
+        <input id="alocItem_${idx}" placeholder="Nome da composição" ${disabled}>
+      </div>
+
+      <small class="line-note">Obrigatório para aprovar BD/IN.</small>
+    </div>
+  `;
+}
+
+function onAlocacaoChange(idx) {
+  const select = $(`alocSelect_${idx}`);
+  const inputs = $(`alocInputs_${idx}`);
+  const eapInput = $(`alocEap_${idx}`);
+  const itemInput = $(`alocItem_${idx}`);
+
+  if (!select || !inputs || !eapInput || !itemInput) return;
+
+  if (select.value === '__nova__') {
+    inputs.classList.remove('hidden');
+    eapInput.value = '';
+    itemInput.value = '';
+    eapInput.focus();
+    return;
+  }
+
+  if (select.value === '') {
+    inputs.classList.add('hidden');
+    eapInput.value = '';
+    itemInput.value = '';
+    return;
+  }
+
+  const comp = state.composicoesAnalise[Number(select.value)];
+
+  if (comp) {
+    eapInput.value = comp.eap || '';
+    itemInput.value = comp.itemOrcamentario || '';
+    inputs.classList.add('hidden');
+  }
+}
+window.onAlocacaoChange = onAlocacaoChange;
 
 function origemAbrev(origem) {
   const o = String(origem || '').toLowerCase();
@@ -547,16 +626,27 @@ async function processarAnaliseBloco() {
     if (!select || !select.value) continue;
 
     const obs = $(`obsAnalise_${idx}`)?.value || '';
+    const origem = origemAbrev(item.origemInsumo);
+    const eapAlocado = $(`alocEap_${idx}`)?.value?.trim() || '';
+    const itemOrcamentarioAlocado = $(`alocItem_${idx}`)?.value?.trim() || '';
 
     if (select.value === 'recusar' && !obs.trim()) {
       return toast('Informe observação para os itens recusados.', 'error');
+    }
+
+    if (select.value === 'aprovar' && origem !== 'OO') {
+      if (!eapAlocado || !itemOrcamentarioAlocado) {
+        return toast(`Informe a alocação em composição para o item ${item.codigoInsumo}.`, 'error');
+      }
     }
 
     decisoes.push({
       idItem: item.idItem,
       decisao: select.value,
       qtdIncluida: Number(item.qtdSolicitadaInclusao || 0),
-      observacaoAnalise: obs
+      observacaoAnalise: obs,
+      eapAlocado,
+      itemOrcamentarioAlocado
     });
   }
 
@@ -567,7 +657,7 @@ async function processarAnaliseBloco() {
   const aprovar = decisoes.filter((d) => d.decisao === 'aprovar').length;
   const recusar = decisoes.filter((d) => d.decisao === 'recusar').length;
 
-  const confirmar = confirm(`Confirmar análise em bloco?\n\nAprovar/Incluir: ${aprovar}\nRecusar: ${recusar}\n\nA aprovação atualizará o saldo local da obra.`);
+  const confirmar = confirm(`Confirmar análise em bloco?\n\nAprovar/Incluir: ${aprovar}\nRecusar: ${recusar}\n\nA aprovação atualizará o saldo local da obra. Itens BD/IN aprovados serão alocados nas composições informadas.`);
   if (!confirmar) return;
 
   const response = await api('processarAnaliseBloco', { decisoes });
@@ -577,7 +667,6 @@ async function processarAnaliseBloco() {
   await loadAnalise();
   await dashboard();
 }
-
 
 function ensure() {
   if (!state.apiUrl) throw new Error('Configure a URL da API Apps Script.');
@@ -594,6 +683,7 @@ async function api(action, payload) {
     'listarSolicitacoesResumo',
     'listarSolicitacaoDetalhada',
     'listarItensAnalise',
+    'listarComposicoesObra',
     'diagnosticarBusca',
     'setupDatabase'
   ];
