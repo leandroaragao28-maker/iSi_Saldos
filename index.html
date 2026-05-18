@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>iSi · Saldos de Insumos</title>
+  <meta name="theme-color" content="#0f3d1e" />
+  <title>iSi — Saldos de Insumos</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,33 +15,25 @@
 </head>
 <body>
   <div class="app">
-    <aside class="rail" id="rail" data-screen-label="Sidebar"></aside>
+    <aside class="rail" id="rail"></aside>
 
-    <header class="topbar" data-screen-label="Topbar">
+    <header class="topbar">
       <div class="crumbs" id="crumbs"></div>
       <span class="grow"></span>
-
       <div class="topbar-actions">
-        <div class="quick-search" id="globalSearch">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-          <span>Buscar ID, insumo, obra...</span>
-          <kbd>⌘K</kbd>
-        </div>
         <button class="btn btn-ghost btn-icon btn-sm" title="Notificações">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         </button>
       </div>
     </header>
 
-    <main class="main" id="main" data-screen-label="Main"></main>
+    <main class="main" id="main"></main>
 
-    <footer class="statusbar" data-screen-label="Statusbar">
-      <span class="conn" id="connStatus">Offline</span>
-      <span class="pill" id="obraStatus">Sem obra selecionada</span>
+    <footer class="statusbar" id="statusbar">
+      <span class="conn">Carregando...</span>
+      <span class="pill">—</span>
       <span class="grow"></span>
-      <span>backend · Apps Script</span>
-      <span>·</span>
-      <span id="cacheStatus">cache local</span>
+      <span>iSi v.11.x backend · v.10 frontend</span>
     </footer>
 
     <nav class="bottom-tabs" id="bottomTabs"></nav>
@@ -49,6 +42,7 @@
   <div class="toast-stack" id="toastStack"></div>
 
   <script src="assets/icons.js"></script>
+  <script src="assets/mock-data.js"></script>
   <script src="assets/app.js"></script>
 </body>
 </html>
