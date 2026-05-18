@@ -1,11 +1,15 @@
-# ISI Frontend v8 - Performance
+# ISI Frontend v9 - Confirmação de análise mais rápida
 
-## Principais melhorias
+## O que mudou
 
-- A abertura/teste de conexão usa `inicializarApp`, reduzindo 3 chamadas para 1.
-- A tela de análise usa `getDadosAnalise`, reduzindo chamadas de itens + composições para 1.
-- Após criar solicitação, o frontend não recarrega automaticamente toda a lista de solicitações.
-- Mantém toast/loading visual.
+Após confirmar decisões na tela de análise, o frontend não recarrega automaticamente:
+
+- a análise completa;
+- o dashboard.
+
+Ele atualiza a tabela localmente com os itens aprovados/recusados.
+
+Isso evita chamadas extras ao Apps Script logo depois do processamento do lote.
 
 ## Como aplicar
 
@@ -15,5 +19,3 @@ Substitua no GitHub Pages:
 - `assets/style.css`
 - `assets/app.js`
 - `.nojekyll`
-
-Depois recarregue a página com Ctrl+F5.
