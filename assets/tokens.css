@@ -1,0 +1,161 @@
+/* =================================================================
+   ISI · Design Tokens
+   Verde ERP sóbrio · compacto · neutros levemente esverdeados
+   ================================================================= */
+
+:root {
+  /* ---------- Color · Brand (green) ---------- */
+  --g-50:  #f1f6f2;
+  --g-100: #dde9e0;
+  --g-200: #bbd1c1;
+  --g-300: #92b59c;
+  --g-400: #659076;
+  --g-500: #467359;
+  --g-600: #345b46;
+  --g-700: #2a4a39;
+  --g-800: #1b5e20;   /* legado da v1 */
+  --g-900: #0f3d1e;   /* legado da v1 */
+  --g-950: #06200d;
+
+  /* ---------- Color · Neutrals (warm, slight green) ---------- */
+  --n-0:   #ffffff;
+  --n-25:  #fbfcfa;
+  --n-50:  #f6f7f4;
+  --n-100: #eef0eb;
+  --n-150: #e4e7df;
+  --n-200: #d5dad0;
+  --n-300: #b8c0b3;
+  --n-400: #8a9387;
+  --n-500: #636b61;
+  --n-600: #474d46;
+  --n-700: #2f3530;
+  --n-800: #1d211e;
+  --n-900: #0f1210;
+
+  /* ---------- Color · Status ---------- */
+  --st-info:        #2a5984;
+  --st-info-bg:     #e6eff6;
+  --st-info-border: #b8d0e1;
+
+  --st-pending:        #9b6a14;
+  --st-pending-bg:     #fbf2dd;
+  --st-pending-border: #ecd99a;
+
+  --st-approved:        #225034;
+  --st-approved-bg:     #e1ecd9;
+  --st-approved-border: #b6cda4;
+
+  --st-rejected:        #8d2528;
+  --st-rejected-bg:     #f6e0df;
+  --st-rejected-border: #e0b3b1;
+
+  --st-neutral:        #4a524a;
+  --st-neutral-bg:     #ecefe8;
+  --st-neutral-border: #cdd3c5;
+
+  /* Origem tags */
+  --og-oo: #345b46;   /* Orçamento da Obra → verde */
+  --og-bd: #2a5984;   /* Banco Geral → azul */
+  --og-in: #9b6a14;   /* Insumo Novo → âmbar */
+
+  /* ---------- Semantic ---------- */
+  --bg-app:        var(--n-50);
+  --bg-surface:    var(--n-0);
+  --bg-surface-2:  var(--n-25);
+  --bg-elevated:   var(--n-0);
+  --bg-hover:      var(--n-100);
+  --bg-stripe:     var(--n-25);
+  --bg-rail:       var(--g-950);
+
+  --fg-strong:     var(--n-900);
+  --fg-default:    var(--n-800);
+  --fg-muted:      var(--n-500);
+  --fg-faint:      var(--n-400);
+  --fg-on-brand:   #f1f6f2;
+  --fg-on-rail:    #d2dcd5;
+
+  --border-subtle: var(--n-150);
+  --border-default:var(--n-200);
+  --border-strong: var(--n-300);
+  --border-focus:  var(--g-600);
+
+  --accent:        var(--g-700);
+  --accent-hover:  var(--g-800);
+  --accent-fg:     #ffffff;
+
+  /* ---------- Type ---------- */
+  --font-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-display: "IBM Plex Sans", system-ui, sans-serif;
+
+  --t-xs:   11px;
+  --t-sm:   12px;
+  --t-md:   13px;   /* default em tabelas */
+  --t-base: 14px;   /* default body */
+  --t-lg:   15px;
+  --t-xl:   17px;
+  --t-2xl:  20px;
+  --t-3xl:  26px;
+  --t-4xl:  34px;
+
+  --lh-tight:  1.2;
+  --lh-snug:   1.35;
+  --lh-normal: 1.5;
+
+  --fw-regular: 400;
+  --fw-medium:  500;
+  --fw-semi:    600;
+  --fw-bold:    700;
+
+  --ls-tight:  -0.01em;
+  --ls-wide:    0.04em;
+  --ls-mono:   -0.005em;
+
+  /* ---------- Spacing (4px base) ---------- */
+  --s-0:  0;
+  --s-1:  4px;
+  --s-2:  8px;
+  --s-3:  12px;
+  --s-4:  16px;
+  --s-5:  20px;
+  --s-6:  24px;
+  --s-8:  32px;
+  --s-10: 40px;
+  --s-12: 48px;
+  --s-16: 64px;
+
+  /* ---------- Radii ---------- */
+  --r-xs:   3px;
+  --r-sm:   4px;
+  --r-md:   6px;
+  --r-lg:   8px;
+  --r-xl:   12px;
+  --r-pill: 999px;
+
+  /* ---------- Shadow ---------- */
+  --elev-0: 0 0 0 1px var(--border-subtle);
+  --elev-1: 0 1px 1px rgba(15, 25, 18, 0.04), 0 1px 2px rgba(15, 25, 18, 0.06);
+  --elev-2: 0 2px 4px rgba(15, 25, 18, 0.06), 0 4px 12px rgba(15, 25, 18, 0.08);
+  --elev-3: 0 8px 16px rgba(15, 25, 18, 0.08), 0 16px 32px rgba(15, 25, 18, 0.12);
+  --elev-popover: 0 4px 8px rgba(15,25,18,0.08), 0 12px 28px rgba(15,25,18,0.16);
+
+  --focus-ring: 0 0 0 3px rgba(52, 91, 70, 0.28);
+
+  /* ---------- Layout ---------- */
+  --rail-w: 220px;
+  --rail-w-collapsed: 60px;
+  --topbar-h: 48px;
+  --statusbar-h: 28px;
+  --bottomtab-h: 56px;
+
+  --row-h-sm: 30px;
+  --row-h-md: 36px;
+  --row-h-lg: 44px;
+
+  /* ---------- Motion ---------- */
+  --motion-fast: 120ms;
+  --motion-med:  220ms;
+  --motion-slow: 380ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-inout: cubic-bezier(0.4, 0, 0.2, 1);
+}
