@@ -681,11 +681,39 @@ async function processarAnaliseBloco() {
   if (!confirmar) return;
 
   const response = await api('processarAnaliseBloco', { decisoes });
+  const data = response.data || {};
 
-  toast(`Análise processada: ${response.data.aprovados} aprovado(s), ${response.data.recusados} recusado(s).`, 'success');
+  aplicarResultadoAnaliseLocal(decisoes, data.resultados || []);
 
-  await loadAnalise();
-  await dashboard();
+  toast(`Análise processada: ${data.aprovados || 0} aprovado(s), ${data.recusados || 0} recusado(s).`, 'success');
+}
+
+function aplicarResultadoAnaliseLocal(decisoes, resultados) {
+  const sucessoPorId = {};
+  (resultados || []).forEach((r) => {
+    if (r.ok) sucessoPorId[r.idItem] = r;
+  });
+
+  decisoes.forEach((decisao) => {
+    if (!sucessoPorId[decisao.idItem]) return;
+
+    const item = state.analiseItens.find((i) => i.idItem === decisao.idItem);
+    if (!item) return;
+
+    if (decisao.decisao === 'aprovar') {
+      item.statusItem = 'Incluído no Informakon';
+      item.eap = decisao.eapAlocado || item.eap;
+      item.itemOrcamentario = decisao.itemOrcamentarioAlocado || item.itemOrcamentario;
+      item.observacaoAnalise = decisao.observacaoAnalise || item.observacaoAnalise;
+    }
+
+    if (decisao.decisao === 'recusar') {
+      item.statusItem = 'Recusado';
+      item.observacaoAnalise = decisao.observacaoAnalise || item.observacaoAnalise;
+    }
+  });
+
+  renderAnalise();
 }
 
 function ensure() {
