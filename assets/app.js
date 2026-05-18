@@ -43,7 +43,9 @@
     justificativaGeral: '',
 
     busy: false,
-    timerBusca: null
+    timerBusca: null,
+    loadingAnalise: false,
+    analiseCarregada: false
   };
 
   const NAV = [
@@ -139,7 +141,25 @@
     setBusy(true, title);
 
     try {
-      const result = await apiPost(action, payload, opts.timeout || 180000);
+      const readOnlyActions = [
+        'health',
+        'inicializarApp',
+        'getObras',
+        'getDashboardData',
+        'getDadosAnalise',
+        'buscarInsumos',
+        'listarSolicitacoesResumo',
+        'listarItensAnalise',
+        'listarComposicoesObra',
+        'diagnosticarComposicoesObra',
+        'diagnosticarBusca',
+        'limparCacheISI'
+      ];
+
+      const result = readOnlyActions.includes(action)
+        ? await apiJsonp(action, payload, opts.timeout || 90000)
+        : await apiPost(action, payload, opts.timeout || 180000);
+
       if (!result || result.ok === false) throw new Error(result?.error || 'Erro desconhecido na API.');
       return result;
     } catch (err) {
@@ -148,6 +168,45 @@
     } finally {
       setBusy(false);
     }
+  }
+
+  function apiJsonp(action, payload, timeoutMs) {
+    const callbackName = 'isi_cb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+
+    return new Promise((resolve, reject) => {
+      const url = new URL(state.apiUrl);
+      url.searchParams.set('action', action);
+      url.searchParams.set('apiKey', state.apiKey || '');
+      url.searchParams.set('payload', JSON.stringify(payload || {}));
+      url.searchParams.set('callback', callbackName);
+
+      const script = document.createElement('script');
+      script.src = url.toString();
+      script.async = true;
+
+      const cleanup = () => {
+        delete window[callbackName];
+        script.remove();
+        clearTimeout(timer);
+      };
+
+      const timer = setTimeout(() => {
+        cleanup();
+        reject(new Error('Tempo limite excedido ao consultar a API.'));
+      }, timeoutMs);
+
+      window[callbackName] = (response) => {
+        cleanup();
+        resolve(response);
+      };
+
+      script.onerror = () => {
+        cleanup();
+        reject(new Error('Falha ao carregar resposta da API. Verifique a URL /exec e a implantação pública.'));
+      };
+
+      document.body.appendChild(script);
+    });
   }
 
   function loadingTitle(action) {
@@ -247,6 +306,9 @@
       if (!state.obraFiltro && state.obras[0]) state.obraFiltro = state.obras[0].idObra;
       updateFooter();
       render();
+      if (state.screen === 'analise') {
+        setTimeout(() => carregarAnalise({ silent: true }), 50);
+      }
       if (!silent) toast({ kind: 'success', title: 'Conexão funcionando', body: `${state.obras.length} obra(s) carregada(s).` });
     } catch (err) {
       updateFooter();
@@ -336,6 +398,13 @@
     window.scrollTo(0, 0);
     const main = $('.main');
     if (main) main.scrollTo(0, 0);
+
+    if (id === 'analise' && state.apiUrl && !state.analiseCarregada) {
+      setTimeout(() => carregarAnalise({ silent: true }), 50);
+    }
+    if (id === 'solicitacoes' && state.apiUrl && !state.solicitacoes.length) {
+      setTimeout(() => carregarSolicitacoes(), 50);
+    }
   }
 
   function render() {
@@ -381,7 +450,7 @@
           <p>Resumo geral do sistema · dados do Google Sheets</p>
         </div>
         <div class="page-head-actions">
-          <button class="btn btn-secondary">${icon('refresh', 14)} Atualizar</button>
+          <button class="btn btn-secondary" id="reloadDashboardTop">${icon('refresh', 14)} Atualizar</button>
           <button class="btn btn-primary" id="dashNova">${icon('plus', 14)} Nova solicitação</button>
         </div>
       </div>
@@ -447,6 +516,11 @@
     `;
 
     el.querySelector('#dashNova')?.addEventListener('click', () => goTo('nova'));
+    el.querySelector('#reloadDashboardTop')?.addEventListener('click', async () => {
+      const res = await api('getDashboardData', {});
+      state.dashboard = res.data || {};
+      renderInScreen();
+    });
     el.querySelector('#reloadDashboard')?.addEventListener('click', async () => {
       const res = await api('getDashboardData', {});
       state.dashboard = res.data || {};
@@ -556,7 +630,10 @@
     return el;
   }
 
-  async function carregarAnalise() {
+  async function carregarAnalise(options = {}) {
+    if (state.loadingAnalise) return;
+    state.loadingAnalise = true;
+
     try {
       const payload = {};
       if (state.obraFiltro) payload.idObra = state.obraFiltro;
@@ -568,10 +645,13 @@
       state.itensAnalise = data.itens || [];
       state.composicoes = data.composicoes || [];
       state.decisoes = {};
-      toast({ kind: 'success', title: 'Análise carregada', body: `${state.itensAnalise.length} item(ns).` });
+      state.analiseCarregada = true;
+      if (!options.silent) toast({ kind: 'success', title: 'Análise carregada', body: `${state.itensAnalise.length} item(ns).` });
       renderInScreen();
     } catch (err) {
       // api já mostra toast
+    } finally {
+      state.loadingAnalise = false;
     }
   }
 
@@ -1459,8 +1539,12 @@
         const data = res.data || {};
         state.obras = data.obras || [];
         state.dashboard = data.dashboard || {};
+        if (!state.obraSolicitacao && state.obras[0]) state.obraSolicitacao = state.obras[0].idObra;
+        if (!state.obraFiltro && state.obras[0]) state.obraFiltro = state.obras[0].idObra;
+        updateFooter();
         $('#configStatus', el).textContent = JSON.stringify(data, null, 2);
-        toast({ kind: 'success', title: 'Conexão funcionando' });
+        toast({ kind: 'success', title: 'Conexão funcionando', body: `${state.obras.length} obra(s) carregada(s).` });
+        setTimeout(() => render(), 250);
       } catch (err) {
         $('#configStatus', el).textContent = err.message;
       }
