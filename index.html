@@ -1,377 +1,54 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ISI - Saldos de Insumos</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>iSi · Saldos de Insumos</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="assets/tokens.css" />
   <link rel="stylesheet" href="assets/style.css" />
 </head>
 <body>
   <div class="app">
-    <aside>
-      <div class="brand">
-        <div class="brand-icon">📋</div>
-        <div>
-          <h1>ISI</h1>
-          <span>Inclusão de Saldos</span>
+    <aside class="rail" id="rail" data-screen-label="Sidebar"></aside>
+
+    <header class="topbar" data-screen-label="Topbar">
+      <div class="crumbs" id="crumbs"></div>
+      <span class="grow"></span>
+
+      <div class="topbar-actions">
+        <div class="quick-search" id="globalSearch">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <span>Buscar ID, insumo, obra...</span>
+          <kbd>⌘K</kbd>
         </div>
+        <button class="btn btn-ghost btn-icon btn-sm" title="Notificações">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </button>
       </div>
+    </header>
 
-      <nav>
-        <button class="nav active" data-screen="dashboard">📊 Dashboard</button>
-        <button class="nav" data-screen="bases">🗂️ Bases CSV</button>
-        <button class="nav" data-screen="nova">➕ Nova Solicitação</button>
-        <button class="nav" data-screen="analise">🔎 Análise</button>
-        <button class="nav" data-screen="solicitacoes">📄 Solicitações</button>
-        <button class="nav" data-screen="config">⚙️ Configuração</button>
-      </nav>
+    <main class="main" id="main" data-screen-label="Main"></main>
 
-      <div class="side-card">
-        <strong>Fluxo</strong>
-        <span>Solicitação em bloco → análise em tabela → aprovação/recusa em lote.</span>
-      </div>
-    </aside>
+    <footer class="statusbar" data-screen-label="Statusbar">
+      <span class="conn" id="connStatus">Offline</span>
+      <span class="pill" id="obraStatus">Sem obra selecionada</span>
+      <span class="grow"></span>
+      <span>backend · Apps Script</span>
+      <span>·</span>
+      <span id="cacheStatus">cache local</span>
+    </footer>
 
-    <main>
-      <header>
-        <div>
-          <h2 id="pageTitle">Dashboard</h2>
-          <p id="pageSubtitle">Resumo do sistema e conexão com a API.</p>
-        </div>
-        <button class="btn-secondary" id="btnTestApi">Testar conexão</button>
-      </header>
-
-      <section id="dashboard" class="screen">
-        <div class="grid stats">
-          <div class="card stat"><span>Obras</span><strong id="statObras">-</strong></div>
-          <div class="card stat"><span>Orçamento ativo</span><strong id="statOrcamento">-</strong></div>
-          <div class="card stat"><span>Banco geral</span><strong id="statBanco">-</strong></div>
-          <div class="card stat"><span>Solicitações</span><strong id="statSolicitacoes">-</strong></div>
-        </div>
-
-        <div class="card">
-          <div class="card-head">
-            <div>
-              <h3>Status da conexão</h3>
-              <small>Configure a URL do Web App na aba Configuração.</small>
-            </div>
-          </div>
-          <div class="card-body">
-            <pre id="connectionStatus">Aguardando teste de conexão.</pre>
-          </div>
-        </div>
-      </section>
-
-      <section id="bases" class="screen hidden">
-        <div class="grid two">
-          <div class="card">
-            <div class="card-head">
-              <div>
-                <h3>Importar orçamento Informakon</h3>
-                <small>Selecione a obra correspondente ao CSV.</small>
-              </div>
-            </div>
-            <div class="card-body">
-              <div class="field">
-                <label>Obra</label>
-                <select id="obraImport"></select>
-              </div>
-
-              <div class="field">
-                <label>CSV do orçamento Informakon</label>
-                <input type="file" id="orcamentoCsv" accept=".csv" />
-              </div>
-
-              <label class="check">
-                <input type="checkbox" id="manterAjustes" checked />
-                Manter ajustes locais aprovados ao reimportar
-              </label>
-
-              <button class="btn-primary" id="btnImportOrcamento">Importar orçamento</button>
-
-              <div class="hint">
-                Aceita o CSV nativo com Item_ID, CL, Item, Insumo, Discriminação, Unidade, Qtde Orc, Qtde SO e Saldo a SO.
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-head">
-              <div>
-                <h3>Importar banco geral</h3>
-                <small>Base geral de insumos do Informakon.</small>
-              </div>
-            </div>
-            <div class="card-body">
-              <div class="field">
-                <label>CSV do banco geral</label>
-                <input type="file" id="bancoCsv" accept=".csv" />
-              </div>
-
-              <button class="btn-primary" id="btnImportBanco">Importar banco geral</button>
-
-              <div class="hint">
-                Aceita o CSV nativo com Insumo Sub, Especificação Insumo Sub, Unidade, Caracterização, Grupo e Classe.
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card mt">
-          <div class="card-head">
-            <div>
-              <h3>Log</h3>
-              <small>Última operação.</small>
-            </div>
-          </div>
-          <div class="card-body">
-            <pre id="importLog">Nenhuma importação nesta sessão.</pre>
-          </div>
-        </div>
-      </section>
-
-      <section id="nova" class="screen hidden">
-        <div class="card">
-          <div class="card-head">
-            <div>
-              <h3>Dados gerais</h3>
-              <small>Um ID pode conter vários insumos.</small>
-            </div>
-          </div>
-          <div class="card-body">
-            <div class="form-grid">
-              <div class="field">
-                <label>Obra</label>
-                <select id="obraSolicitacao"></select>
-              </div>
-              <div class="field">
-                <label>Solicitante</label>
-                <input id="solicitanteNome" placeholder="Nome" />
-              </div>
-              <div class="field">
-                <label>E-mail</label>
-                <input id="solicitanteEmail" placeholder="email@empresa.com" />
-              </div>
-              <div class="field">
-                <label>Prioridade</label>
-                <select id="prioridade">
-                  <option>Normal</option>
-                  <option>Alta</option>
-                  <option>Urgente</option>
-                </select>
-              </div>
-              <div class="field">
-                <label>Gestão ciente?</label>
-                <select id="gestaoCiente">
-                  <option>Sim</option>
-                  <option>Não</option>
-                  <option>Aguardando validação</option>
-                </select>
-              </div>
-              <div class="field full">
-                <label>Justificativa geral</label>
-                <textarea id="justificativaGeral"></textarea>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="grid two mt">
-          <div class="card">
-            <div class="card-head">
-              <div>
-                <h3>Buscar insumo</h3>
-                <small>Busca no orçamento da obra e no banco geral.</small>
-              </div>
-            </div>
-            <div class="card-body">
-              <div class="field">
-                <label>Termo</label>
-                <input id="termoBusca" placeholder="Digite ao menos 3 caracteres" />
-              </div>
-              <div id="searchResults" class="results"></div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-head">
-              <div>
-                <h3>Item selecionado</h3>
-                <small>Informe quantidade e motivo.</small>
-              </div>
-            </div>
-            <div class="card-body">
-              <div id="selectedItemBox" class="selected empty">Nenhum item selecionado.</div>
-
-              <div class="field">
-                <label>Quantidade a incluir</label>
-                <input id="qtdItem" type="number" min="0" step="0.0001" />
-              </div>
-              <div class="field">
-                <label>Motivo</label>
-                <select id="motivoItem">
-                  <option>Saldo insuficiente</option>
-                  <option>Item não previsto no orçamento</option>
-                  <option>Alteração de projeto</option>
-                  <option>Consumo superior ao orçamento</option>
-                  <option>Substituição de insumo</option>
-                </select>
-              </div>
-              <div class="field">
-                <label>Observação</label>
-                <textarea id="obsItem"></textarea>
-              </div>
-
-              <button class="btn-secondary" id="btnAddItem">Adicionar ao bloco</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="card mt">
-          <div class="card-head">
-            <div>
-              <h3>Itens desta solicitação</h3>
-              <small>Todos vinculados ao mesmo ID.</small>
-            </div>
-            <button class="btn-primary" id="btnCriarSolicitacao">Enviar solicitação</button>
-          </div>
-
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Origem</th>
-                  <th>Código</th>
-                  <th>Descrição</th>
-                  <th>Unid.</th>
-                  <th>Qtd.</th>
-                  <th>Saldo</th>
-                  <th>Ação</th>
-                </tr>
-              </thead>
-              <tbody id="itensSolicitacao">
-                <tr><td colspan="8">Nenhum item adicionado.</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <section id="analise" class="screen hidden">
-        <div class="card">
-          <div class="card-head">
-            <div>
-              <h3>Análise em bloco por composição</h3>
-              <small>Marque Aprovar ou Recusar em cada item e confirme tudo ao final.</small>
-            </div>
-            <div class="actions">
-              <button class="btn-secondary" id="btnLoadAnalise">Carregar itens</button>
-              <button class="btn-primary" id="btnProcessarAnalise">Confirmar decisões</button>
-            </div>
-          </div>
-
-          <div class="card-body compact-analysis">
-            <div class="form-grid">
-              <div class="field">
-                <label>Filtrar por obra</label>
-                <select id="obraAnalise"></select>
-              </div>
-              <div class="field">
-                <label>Status</label>
-                <select id="statusAnalise">
-                  <option value="pendentes">Pendentes de análise</option>
-                  <option value="">Todos</option>
-                  <option value="Novo">Novo</option>
-                  <option value="Incluído no Informakon">Aprovado / incluído</option>
-                  <option value="Recusado">Recusado</option>
-                </select>
-              </div>
-            </div>
-            <div class="hint">
-              <strong>Regra:</strong> aprovar significa que o saldo já foi incluído no Informakon. A quantidade usada é a solicitada no item.
-              Os itens são agrupados por composição. Para itens BD/IN, escolha uma composição existente ou informe uma nova antes de aprovar.
-            </div>
-          </div>
-
-          <div id="analiseTableGroups" class="analysis-table-groups">
-            <div class="empty-line">Clique em Carregar itens.</div>
-          </div>
-        </div>
-      </section>
-
-      <section id="solicitacoes" class="screen hidden">
-        <div class="card">
-          <div class="card-head">
-            <div>
-              <h3>Solicitações</h3>
-              <small>Resumo dos IDs criados.</small>
-            </div>
-            <button class="btn-secondary" id="btnLoadSolicitacoes">Atualizar lista</button>
-          </div>
-
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Data</th>
-                  <th>Obra</th>
-                  <th>Solicitante</th>
-                  <th>Itens</th>
-                  <th>Status</th>
-                  <th>Resumo</th>
-                </tr>
-              </thead>
-              <tbody id="solicitacoesTable">
-                <tr><td colspan="7">Clique em Atualizar lista.</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <section id="config" class="screen hidden">
-        <div class="card">
-          <div class="card-head">
-            <div>
-              <h3>Configuração da API</h3>
-              <small>Use a URL /exec da implantação do Apps Script.</small>
-            </div>
-          </div>
-          <div class="card-body">
-            <div class="field">
-              <label>URL da API Apps Script</label>
-              <input id="apiUrl" placeholder="https://script.google.com/macros/s/.../exec" />
-            </div>
-            <div class="field">
-              <label>API Key</label>
-              <input id="apiKey" placeholder="Mesma chave do Code.gs" />
-            </div>
-            <div class="actions">
-              <button class="btn-primary" id="btnSaveConfig">Salvar</button>
-              <button class="btn-secondary" id="btnSetupDb">Rodar setupDatabase()</button>
-              <button class="btn-light" id="btnLimparCache">Limpar cache</button>
-            </div>
-            <div class="hint">URL e chave ficam salvas apenas no navegador local.</div>
-          </div>
-        </div>
-      </section>
-    </main>
+    <nav class="bottom-tabs" id="bottomTabs"></nav>
   </div>
 
-  <div id="loadingOverlay" class="loading-overlay hidden">
-    <div class="loading-card">
-      <div class="spinner"></div>
-      <div>
-        <strong id="loadingTitle">Processando...</strong>
-        <small id="loadingSubtitle">Comando enviado. Aguardando resposta do Apps Script.</small>
-      </div>
-    </div>
-  </div>
+  <div class="toast-stack" id="toastStack"></div>
 
-  <div id="toast"></div>
-
+  <script src="assets/icons.js"></script>
   <script src="assets/app.js"></script>
 </body>
 </html>
