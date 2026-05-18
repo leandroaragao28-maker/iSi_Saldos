@@ -1,2 +1,233 @@
 const state={apiUrl:localStorage.getItem('isi_api_url')||'',apiKey:localStorage.getItem('isi_api_key')||'',obras:[],selectedItem:null,itens:[],timer:null};const $=id=>document.getElementById(id);document.addEventListener('DOMContentLoaded',()=>{nav();bind();$('apiUrl').value=state.apiUrl;$('apiKey').value=state.apiKey;if(state.apiUrl)testApi(true)});function nav(){document.querySelectorAll('.nav').forEach(b=>b.onclick=()=>{document.querySelectorAll('.nav').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));$(b.dataset.screen).classList.remove('hidden');const t={dashboard:['Dashboard','Resumo do sistema e conexão com a API.'],bases:['Bases CSV','Importe orçamento por obra e banco geral.'],nova:['Nova Solicitação','Crie uma solicitação com vários insumos.'],solicitacoes:['Solicitações','Consulte os IDs criados.'],config:['Configuração','Conecte o frontend ao Apps Script.']};$('pageTitle').textContent=t[b.dataset.screen][0];$('pageSubtitle').textContent=t[b.dataset.screen][1]})}function bind(){$('btnSaveConfig').onclick=saveConfig;$('btnTestApi').onclick=()=>testApi(false);$('btnSetupDb').onclick=setupDb;$('btnImportBanco').onclick=importBanco;$('btnImportOrcamento').onclick=importOrcamento;$('termoBusca').oninput=()=>{clearTimeout(state.timer);state.timer=setTimeout(searchInsumos,700)};$('obraSolicitacao').onchange=()=>{$('termoBusca').value='';$('searchResults').innerHTML='';state.selectedItem=null;renderSelected()};$('btnAddItem').onclick=addItem;$('btnCriarSolicitacao').onclick=criarSolicitacao;$('btnLoadSolicitacoes').onclick=loadSolicitacoes}function saveConfig(){state.apiUrl=$('apiUrl').value.trim();state.apiKey=$('apiKey').value.trim();localStorage.setItem('isi_api_url',state.apiUrl);localStorage.setItem('isi_api_key',state.apiKey);toast('Configuração salva.')}async function testApi(silent){try{ensure();const h=await api('health',{}), o=await api('getObras',{});state.obras=o.data||[];popObras();await dashboard();$('connectionStatus').textContent=JSON.stringify({api:h,obras:state.obras},null,2);if(!silent)toast('Conexão funcionando.')}catch(e){$('connectionStatus').textContent=e.message;if(!silent)toast(e.message)}}async function setupDb(){try{const r=await api('setupDatabase',{});$('connectionStatus').textContent=JSON.stringify(r,null,2);toast('setupDatabase executado.');await testApi(true)}catch(e){toast(e.message)}}async function dashboard(){const r=await api('getDashboardData',{}),d=r.data||{};$('statObras').textContent=d.obras??'-';$('statOrcamento').textContent=d.orcamentoAtivo??'-';$('statBanco').textContent=d.bancoGeral??'-';$('statSolicitacoes').textContent=d.solicitacoes??'-'}function popObras(){const opt=state.obras.map(o=>`<option value="${esc(o.idObra)}">${esc(o.nomeObra)} (${esc(o.idObra)})</option>`).join('');$('obraImport').innerHTML=opt;$('obraSolicitacao').innerHTML=opt}async function importBanco(){try{const f=$('bancoCsv').files[0];if(!f)throw Error('Selecione o CSV do banco geral.');const txt=await read(f);const r=await api('importarBancoGeralInsumos',{nomeArquivo:f.name,csvContent:txt});$('importLog').textContent=JSON.stringify(r,null,2);toast('Banco geral importado.');await dashboard()}catch(e){$('importLog').textContent=e.message;toast(e.message)}}async function importOrcamento(){try{const f=$('orcamentoCsv').files[0],idObra=$('obraImport').value;if(!idObra)throw Error('Selecione a obra.');if(!f)throw Error('Selecione o CSV do orçamento.');const txt=await read(f);const r=await api('importarOrcamentoInformakon',{idObra,nomeArquivo:f.name,csvContent:txt,manterAjustesLocais:$('manterAjustes').checked});$('importLog').textContent=JSON.stringify(r,null,2);toast('Orçamento importado.');await dashboard()}catch(e){$('importLog').textContent=e.message;toast(e.message)}}async function searchInsumos(){const termo=$('termoBusca').value.trim(),idObra=$('obraSolicitacao').value;if(termo.length<3){$('searchResults').innerHTML='<div class="hint">Digite ao menos 3 caracteres.</div>';return}try{$('searchResults').innerHTML='<div class="hint">Buscando...</div>';const r=await api('buscarInsumos',{idObra,termo,limit:30}),arr=r.data||[];if(!arr.length){$('searchResults').innerHTML=`<div class="result" data-new="1"><strong><span class="tag new">NOVO CADASTRO</span>${esc(termo.toUpperCase())}</strong><span>Nenhum resultado encontrado.</span></div>`;document.querySelector('[data-new]').onclick=()=>{state.selectedItem={origemInsumo:'Novo Cadastro',idOrcamento:'',chaveOrcamento:'',codigoInsumo:'NOVO CADASTRO',descricaoInsumo:termo.toUpperCase(),unidade:'',classificacao:'A classificar',eap:'',itemOrcamentario:'',qtdOrcadaAtual:0,qtdSolicitadaAtual:0,saldoAtual:0};renderSelected()};return}$('searchResults').innerHTML=arr.map((i,n)=>{const b=i.origemInsumo==='Orçamento da Obra',tag=b?'budget':'bank',det=b?`${i.eap||'-'} · ${i.itemOrcamentario||'-'} · Saldo: ${fmt(i.saldoAtual)} ${i.unidade||''}`:`${i.classificacao||'-'} · Não previsto no orçamento`;return `<div class="result" data-i="${n}"><strong><span class="tag ${tag}">${esc(i.origemInsumo)}</span>${esc(i.codigoInsumo)} — ${esc(i.descricaoInsumo)}</strong><span>${esc(det)}</span></div>`}).join('');document.querySelectorAll('[data-i]').forEach(el=>el.onclick=()=>{state.selectedItem=arr[Number(el.dataset.i)];renderSelected()})}catch(e){$('searchResults').innerHTML=`<div class="hint">${esc(e.message)}</div>`}}function renderSelected(){if(!state.selectedItem){$('selectedItemBox').className='selected empty';$('selectedItemBox').textContent='Nenhum item selecionado.';return}const i=state.selectedItem;$('selectedItemBox').className='selected';$('selectedItemBox').innerHTML=`<strong>${esc(i.codigoInsumo)} — ${esc(i.descricaoInsumo)}</strong><br>Origem: ${esc(i.origemInsumo)}<br>Unidade: ${esc(i.unidade||'-')}<br>Classificação: ${esc(i.classificacao||'-')}<br>EAP/Item: ${esc(i.eap||'-')} · ${esc(i.itemOrcamentario||'-')}<br>Saldo atual: ${fmt(i.saldoAtual)} ${esc(i.unidade||'')}`}function addItem(){if(!state.selectedItem)return toast('Selecione um insumo.');const q=Number($('qtdItem').value||0);if(q<=0)return toast('Informe a quantidade.');state.itens.push({...state.selectedItem,qtdSolicitadaInclusao:q,motivoItem:$('motivoItem').value,observacaoSolicitante:$('obsItem').value});$('qtdItem').value='';$('obsItem').value='';state.selectedItem=null;renderSelected();renderItens();toast('Item adicionado.')}function renderItens(){const tb=$('itensSolicitacao');if(!state.itens.length){tb.innerHTML='<tr><td colspan="8">Nenhum item adicionado.</td></tr>';return}tb.innerHTML=state.itens.map((i,n)=>`<tr><td>${n+1}</td><td>${esc(i.origemInsumo)}</td><td><strong>${esc(i.codigoInsumo)}</strong></td><td>${esc(i.descricaoInsumo)}</td><td>${esc(i.unidade||'')}</td><td>${fmt(i.qtdSolicitadaInclusao)}</td><td>${fmt(i.saldoAtual)}</td><td><button class="btn-light" data-r="${n}">Remover</button></td></tr>`).join('');document.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{state.itens.splice(Number(b.dataset.r),1);renderItens()})}async function criarSolicitacao(){try{if(!state.itens.length)throw Error('Adicione pelo menos um item.');const r=await api('criarSolicitacao',{idObra:$('obraSolicitacao').value,solicitanteNome:$('solicitanteNome').value,solicitanteEmail:$('solicitanteEmail').value,prioridade:$('prioridade').value,gestaoCiente:$('gestaoCiente').value,justificativaGeral:$('justificativaGeral').value,itens:state.itens});toast('Solicitação criada: '+r.data.idSolicitacao);state.itens=[];renderItens();$('justificativaGeral').value='';await loadSolicitacoes()}catch(e){toast(e.message)}}async function loadSolicitacoes(){try{const r=await api('listarSolicitacoesResumo',{}),arr=r.data||[],tb=$('solicitacoesTable');if(!arr.length){tb.innerHTML='<tr><td colspan="7">Nenhuma solicitação.</td></tr>';return}tb.innerHTML=arr.map(x=>`<tr><td><strong>${esc(x.idSolicitacao)}</strong></td><td>${esc(String(x.dataSolicitacao||''))}</td><td>${esc(x.idObra||'')}</td><td>${esc(x.solicitanteNome||'')}</td><td>${x.itens}</td><td>${esc(x.statusGeral||'')}</td><td>${(x.resumoItens||[]).map(esc).join('<br>')}</td></tr>`).join('')}catch(e){$('solicitacoesTable').innerHTML=`<tr><td colspan="7">${esc(e.message)}</td></tr>`}}function ensure(){if(!state.apiUrl)throw Error('Configure a URL da API Apps Script.')}function api(action,payload){ensure();const jsonpActions=['health','getObras','getDashboardData','buscarInsumos','listarSolicitacoesResumo','diagnosticarBusca','setupDatabase'];if(jsonpActions.includes(action))return apiJsonp(action,payload);return apiPost(action,payload)}function apiJsonp(action,payload){const cb='isi_cb_'+Date.now()+'_'+Math.random().toString(36).slice(2);const url=new URL(state.apiUrl);url.searchParams.set('action',action);url.searchParams.set('apiKey',state.apiKey);url.searchParams.set('payload',JSON.stringify(payload||{}));url.searchParams.set('callback',cb);return new Promise((resolve,reject)=>{const s=document.createElement('script');const t=setTimeout(()=>{cleanup();reject(Error('Tempo limite excedido ao chamar a API via JSONP. Verifique URL /exec, implantação e permissões.'))},60000);function cleanup(){clearTimeout(t);delete window[cb];s.remove()}window[cb]=r=>{cleanup();if(!r||r.ok===false)return reject(Error(r?.error||'Erro desconhecido na API.'));resolve(r)};s.onerror=()=>{cleanup();reject(Error('Não foi possível carregar a API. Verifique se a URL termina com /exec e se a implantação está pública.'))};s.src=url.toString();document.body.appendChild(s)})}function apiPost(action,payload){ensure();const requestId='req_'+Date.now()+'_'+Math.random().toString(36).slice(2),name='isi_iframe_'+requestId;return new Promise((resolve,reject)=>{const iframe=document.createElement('iframe'),form=document.createElement('form');iframe.name=name;iframe.style.display='none';form.method='POST';form.action=state.apiUrl;form.target=name;form.style.display='none';Object.entries({requestId,action,apiKey:state.apiKey,payload:JSON.stringify(payload||{})}).forEach(([k,v])=>{const inp=document.createElement('input');inp.type='hidden';inp.name=k;inp.value=v;form.appendChild(inp)});const clean=()=>{window.removeEventListener('message',onMsg);iframe.remove();form.remove();clearTimeout(t)};const t=setTimeout(()=>{clean();reject(Error('Tempo limite excedido ao chamar a API. Se isso ocorreu em importação, confira se o arquivo é muito grande ou se a implantação do Apps Script está pública.'))},120000);function onMsg(ev){const d=ev.data||{};if(d.source!=='ISI_APPS_SCRIPT_API'||d.requestId!==requestId)return;clean();const r=d.result;if(!r||r.ok===false)return reject(Error(r?.error||'Erro desconhecido na API.'));resolve(r)}window.addEventListener('message',onMsg);document.body.appendChild(iframe);document.body.appendChild(form);form.submit()})}function read(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result||''));r.onerror=()=>rej(Error('Erro ao ler arquivo.'));r.readAsText(file,'ISO-8859-1')})}function fmt(v){return Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:4})}function esc(v){return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}function toast(m){const el=$('toast');el.textContent=m;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),3200)}
 // v3.1: Teste de conexão e consultas leves via JSONP para evitar timeout/CORS.
+
+
+
+/* v3.2 - Feedback visual de consulta/processamento */
+(function () {
+  const originalApiJsonp = window.apiJsonp;
+  const originalApiPost = window.apiPost;
+
+  const actionLabels = {
+    health: "Testando conexão com a API...",
+    getObras: "Carregando obras...",
+    getDashboardData: "Atualizando dashboard...",
+    setupDatabase: "Configurando banco de dados...",
+    importarBancoGeralInsumos: "Importando banco geral de insumos...",
+    importarOrcamentoInformakon: "Importando orçamento da obra...",
+    buscarInsumos: "Consultando insumos no banco de dados...",
+    criarSolicitacao: "Enviando solicitação...",
+    listarSolicitacoesResumo: "Carregando solicitações...",
+    diagnosticarBusca: "Executando diagnóstico...",
+    aprovarItem: "Aprovando item...",
+    recusarItem: "Recusando item...",
+    marcarIncluidoInformakon: "Atualizando saldo local...",
+    marcarCompraSolicitada: "Registrando compra solicitada..."
+  };
+
+  let loadingCount = 0;
+  let toastTimer = null;
+
+  function ensureLoadingUi() {
+    if (document.getElementById("isiLoadingOverlay")) return;
+
+    const style = document.createElement("style");
+    style.id = "isiLoadingStyles";
+    style.textContent = `
+      .isi-loading-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 9998;
+        display: none;
+        background: rgba(15, 61, 30, 0.08);
+        backdrop-filter: blur(1.5px);
+        pointer-events: none;
+      }
+
+      .isi-loading-overlay.show {
+        display: block;
+      }
+
+      .isi-loading-card {
+        position: fixed;
+        right: 18px;
+        top: 18px;
+        max-width: 360px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: #ffffff;
+        border: 1px solid #c8e6c9;
+        border-radius: 16px;
+        box-shadow: 0 12px 28px rgba(15,61,30,.16);
+        padding: 13px 15px;
+        color: #0f3d1e;
+        font: 14px Arial, sans-serif;
+      }
+
+      .isi-spinner {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        border: 3px solid #e8f5e9;
+        border-top-color: #2e7d32;
+        animation: isiSpin .8s linear infinite;
+        flex: 0 0 auto;
+      }
+
+      @keyframes isiSpin {
+        to { transform: rotate(360deg); }
+      }
+
+      body.isi-busy button:not(.nav),
+      body.isi-busy input[type="file"] {
+        opacity: .65;
+      }
+
+      body.isi-busy button:not(.nav) {
+        pointer-events: none;
+      }
+
+      #toast.loading {
+        background: #1b5e20;
+      }
+
+      #toast.success {
+        background: #1b5e20;
+      }
+
+      #toast.error {
+        background: #991b1b;
+      }
+
+      @media (max-width: 700px) {
+        .isi-loading-card {
+          left: 12px;
+          right: 12px;
+          top: 12px;
+          max-width: none;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+
+    const overlay = document.createElement("div");
+    overlay.id = "isiLoadingOverlay";
+    overlay.className = "isi-loading-overlay";
+    overlay.innerHTML = `
+      <div class="isi-loading-card">
+        <div class="isi-spinner"></div>
+        <div>
+          <strong id="isiLoadingTitle">Processando...</strong><br>
+          <small id="isiLoadingSubtitle">Aguardando resposta do banco de dados.</small>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  }
+
+  function setToast(message, type, persistent) {
+    const el = document.getElementById("toast");
+    if (!el) return;
+
+    clearTimeout(toastTimer);
+    el.className = "";
+    el.classList.add("show");
+    if (type) el.classList.add(type);
+    el.textContent = message;
+
+    if (!persistent) {
+      toastTimer = setTimeout(() => {
+        el.classList.remove("show", "loading", "success", "error");
+      }, 3600);
+    }
+  }
+
+  function beginLoading(message) {
+    ensureLoadingUi();
+
+    loadingCount += 1;
+
+    const overlay = document.getElementById("isiLoadingOverlay");
+    const title = document.getElementById("isiLoadingTitle");
+    const subtitle = document.getElementById("isiLoadingSubtitle");
+
+    title.textContent = message || "Processando...";
+    subtitle.textContent = "Comando enviado. Aguardando resposta do Apps Script.";
+    overlay.classList.add("show");
+    document.body.classList.add("isi-busy");
+
+    setToast(message || "Processando...", "loading", true);
+  }
+
+  function endLoading(successMessage) {
+    loadingCount = Math.max(0, loadingCount - 1);
+
+    if (loadingCount === 0) {
+      const overlay = document.getElementById("isiLoadingOverlay");
+      if (overlay) overlay.classList.remove("show");
+      document.body.classList.remove("isi-busy");
+    }
+
+    if (successMessage) {
+      setToast(successMessage, "success", false);
+    }
+  }
+
+  function failLoading(message) {
+    loadingCount = Math.max(0, loadingCount - 1);
+
+    if (loadingCount === 0) {
+      const overlay = document.getElementById("isiLoadingOverlay");
+      if (overlay) overlay.classList.remove("show");
+      document.body.classList.remove("isi-busy");
+    }
+
+    setToast(message || "Erro ao executar comando.", "error", false);
+  }
+
+  function getSuccessMessage(action) {
+    if (action === "health") return "Conexão com API confirmada.";
+    if (action === "getObras") return "";
+    if (action === "getDashboardData") return "";
+    if (action === "buscarInsumos") return "";
+    if (action === "listarSolicitacoesResumo") return "Solicitações carregadas.";
+    if (action === "setupDatabase") return "Banco configurado.";
+    if (action === "importarBancoGeralInsumos") return "Banco geral importado.";
+    if (action === "importarOrcamentoInformakon") return "Orçamento importado.";
+    if (action === "criarSolicitacao") return "Solicitação enviada.";
+    return "Comando concluído.";
+  }
+
+  window.api = async function (action, payload) {
+    ensure();
+    const jsonpActions = [
+      "health",
+      "getObras",
+      "getDashboardData",
+      "buscarInsumos",
+      "listarSolicitacoesResumo",
+      "diagnosticarBusca",
+      "setupDatabase"
+    ];
+
+    const message = actionLabels[action] || "Consultando banco de dados...";
+    beginLoading(message);
+
+    try {
+      const result = jsonpActions.includes(action)
+        ? await originalApiJsonp(action, payload)
+        : await originalApiPost(action, payload);
+
+      endLoading(getSuccessMessage(action));
+      return result;
+    } catch (err) {
+      failLoading(err.message || "Erro ao executar comando.");
+      throw err;
+    }
+  };
+
+  window.toast = function (message) {
+    setToast(message, "success", false);
+  };
+})();
