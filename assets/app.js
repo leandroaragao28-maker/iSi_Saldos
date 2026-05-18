@@ -33,7 +33,7 @@ function setupNavigation() {
         dashboard: ['Dashboard', 'Resumo do sistema e conexão com a API.'],
         bases: ['Bases CSV', 'Importe orçamento por obra e banco geral.'],
         nova: ['Nova Solicitação', 'Crie uma solicitação com vários insumos.'],
-        analise: ['Análise', 'Aprove, recuse, marque inclusão e compra por item.'],
+        analise: ['Análise', 'Aprovação/recusa em lote, agrupada por composição.'],
         solicitacoes: ['Solicitações', 'Consulte os IDs criados.'],
         config: ['Configuração', 'Conecte o frontend ao Apps Script.']
       };
@@ -68,6 +68,7 @@ function bindEvents() {
   $('btnCriarSolicitacao').onclick = criarSolicitacao;
   $('btnLoadSolicitacoes').onclick = loadSolicitacoes;
   $('btnLoadAnalise').onclick = loadAnalise;
+  $('btnProcessarAnalise').onclick = processarAnaliseBloco;
 }
 
 function saveConfig() {
@@ -387,76 +388,138 @@ async function loadAnalise() {
     state.analiseItens = response.data || [];
     renderAnalise();
   } catch (e) {
-    $('analiseCards').innerHTML = `<div class="empty-line">${esc(e.message)}</div>`;
+    $('analiseTableGroups').innerHTML = `<div class="empty-line">${esc(e.message)}</div>`;
   }
 }
 
 function renderAnalise() {
-  const box = $('analiseCards');
+  const box = $('analiseTableGroups');
 
   if (!state.analiseItens.length) {
     box.innerHTML = '<div class="empty-line">Nenhum item encontrado para os filtros selecionados.</div>';
     return;
   }
 
-  box.innerHTML = state.analiseItens.map((item, index) => {
-    const approvedDefault = item.qtdAprovada > 0 ? item.qtdAprovada : item.qtdSolicitadaInclusao;
+  const groups = groupAnalysisItems(state.analiseItens);
 
-    return `
-      <div class="analysis-card" data-card="${index}">
-        <div class="analysis-top">
-          <div class="analysis-title">
-            <strong>${esc(item.codigoInsumo)} — ${esc(item.descricaoInsumo)}</strong>
-            <small>
-              Solicitação: ${esc(item.idSolicitacao)} · Item: ${esc(item.idItem)}<br>
-              ${esc(item.nomeObra)} · Solicitante: ${esc(item.solicitanteNome || '-')}
-            </small>
-          </div>
-          ${statusPill(item.statusItem)}
+  box.innerHTML = groups.map((group) => `
+    <div class="composition-block">
+      <div class="composition-header">
+        <div>
+          <strong>${esc(group.eap || '-')} · ${esc(group.itemOrcamentario || 'Sem composição definida')}</strong>
+          <small>
+            Solicitação: ${esc(group.idSolicitacao)} · Obra: ${esc(group.nomeObra || group.idObra || '-')} ·
+            Solicitante: ${esc(group.solicitanteNome || '-')}
+          </small>
         </div>
-
-        <div class="analysis-meta">
-          <div class="meta-box"><span>Origem</span><strong>${esc(item.origemInsumo || '-')}</strong></div>
-          <div class="meta-box"><span>EAP / Item</span><strong>${esc(item.eap || '-')} · ${esc(item.itemOrcamentario || '-')}</strong></div>
-          <div class="meta-box"><span>Saldo atual</span><strong>${fmt(item.saldoAtual)} ${esc(item.unidade || '')}</strong></div>
-          <div class="meta-box"><span>Qtd. solicitada</span><strong>${fmt(item.qtdSolicitadaInclusao)} ${esc(item.unidade || '')}</strong></div>
-          <div class="meta-box"><span>Qtd. orçada</span><strong>${fmt(item.qtdOrcadaAtual)}</strong></div>
-          <div class="meta-box"><span>Qtd. já solicitada</span><strong>${fmt(item.qtdSolicitadaAtual)}</strong></div>
-          <div class="meta-box"><span>Classificação</span><strong>${esc(item.classificacao || '-')}</strong></div>
-          <div class="meta-box"><span>Motivo</span><strong>${esc(item.motivoItem || '-')}</strong></div>
-        </div>
-
-        <div class="selected">
-          <strong>Observação do solicitante</strong><br>
-          ${esc(item.observacaoSolicitante || '-')}
-        </div>
-
-        <div class="analysis-actions">
-          <div class="field">
-            <label>Qtd. aprovada / incluída</label>
-            <input id="qtdAprovada_${index}" type="number" min="0" step="0.0001" value="${Number(approvedDefault || 0)}" />
-          </div>
-          <div class="field">
-            <label>Observação da análise</label>
-            <input id="obsAnalise_${index}" value="${esc(item.observacaoAnalise || '')}" placeholder="Justificativa, ajuste ou recusa" />
-          </div>
-        </div>
-
-        <div class="analysis-actions">
-          <div class="field">
-            <label>Nº solicitação compra</label>
-            <input id="numCompra_${index}" value="${esc(item.numeroSolicitacaoCompra || '')}" placeholder="Opcional" />
-          </div>
-          <div class="analysis-buttons">
-            <button class="btn-primary" onclick="aprovarAnalise(${index})">Aprovar</button>
-            <button class="btn-danger" onclick="recusarAnalise(${index})">Recusar</button>
-            <button class="btn-blue" onclick="incluirInformakon(${index})">Marcar incluído no Informakon</button>
-            <button class="btn-secondary" onclick="marcarCompra(${index})">Compra solicitada</button>
-          </div>
-        </div>
+        <span class="composition-count">${group.items.length} ${group.items.length === 1 ? 'item' : 'itens'}</span>
       </div>
-    `;
-  }).join('');
+
+      <div class="table-wrap">
+        <table class="analysis-table">
+          <thead>
+            <tr>
+              <th>Decisão</th>
+              <th>Orig.</th>
+              <th>Código</th>
+              <th>Insumo</th>
+              <th>Unid.</th>
+              <th>Qtd. orçada</th>
+              <th>Qtd. solicitada</th>
+              <th>Nova qtd. orçada</th>
+              <th>Status</th>
+              <th>Obs. análise</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${group.items.map((item) => renderAnalysisRow(item)).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `).join('');
+}
+
+function groupAnalysisItems(items) {
+  const map = new Map();
+
+  items.forEach((item, index) => {
+    item.__index = index;
+
+    const key = [
+      item.idSolicitacao || '',
+      item.eap || '',
+      item.itemOrcamentario || 'Sem composição definida'
+    ].join('|');
+
+    if (!map.has(key)) {
+      map.set(key, {
+        key,
+        idSolicitacao: item.idSolicitacao,
+        idObra: item.idObra,
+        nomeObra: item.nomeObra,
+        solicitanteNome: item.solicitanteNome,
+        eap: item.eap,
+        itemOrcamentario: item.itemOrcamentario,
+        items: []
+      });
+    }
+
+    map.get(key).items.push(item);
+  });
+
+  return Array.from(map.values()).sort((a, b) => {
+    const sol = String(a.idSolicitacao || '').localeCompare(String(b.idSolicitacao || ''));
+    if (sol !== 0) return sol;
+    return String(a.eap || '').localeCompare(String(b.eap || ''), 'pt-BR', { numeric: true });
+  });
+}
+
+function renderAnalysisRow(item) {
+  const idx = item.__index;
+  const origem = origemAbrev(item.origemInsumo);
+  const origemClass = origem === 'OO' ? 'origin-oo' : origem === 'BD' ? 'origin-bd' : 'origin-in';
+  const qtdOrcada = Number(item.qtdOrcadaAtual || 0);
+  const qtdSolicitada = Number(item.qtdSolicitadaInclusao || 0);
+  const novaQtd = qtdOrcada + qtdSolicitada;
+  const isFinal = ['Incluído no Informakon', 'Recusado', 'Compra solicitada'].includes(item.statusItem);
+  const disabled = isFinal ? 'disabled' : '';
+
+  return `
+    <tr data-analysis-row="${idx}" class="${isFinal ? 'row-finalizada' : ''}">
+      <td>
+        <select id="decisao_${idx}" class="decision-select" ${disabled}>
+          <option value="">-</option>
+          <option value="aprovar">Aprovar</option>
+          <option value="recusar">Recusar</option>
+        </select>
+      </td>
+      <td><span class="origin ${origemClass}" title="${esc(item.origemInsumo || '')}">${origem}</span></td>
+      <td><strong>${esc(item.codigoInsumo || '')}</strong></td>
+      <td>
+        ${esc(item.descricaoInsumo || '')}
+        <small class="line-note">${esc(item.motivoItem || '')}${item.observacaoSolicitante ? ' · ' + esc(item.observacaoSolicitante) : ''}</small>
+      </td>
+      <td>${esc(item.unidade || '')}</td>
+      <td>${fmt(qtdOrcada)}</td>
+      <td><strong>${fmt(qtdSolicitada)}</strong></td>
+      <td><strong>${fmt(novaQtd)}</strong></td>
+      <td>${statusPill(item.statusItem)}</td>
+      <td>
+        <input id="obsAnalise_${idx}" class="analysis-obs" value="${esc(item.observacaoAnalise || '')}" placeholder="Obs." ${disabled} />
+      </td>
+    </tr>
+  `;
+}
+
+function origemAbrev(origem) {
+  const o = String(origem || '').toLowerCase();
+
+  if (o.includes('orçamento') || o.includes('orcamento')) return 'OO';
+  if (o.includes('banco')) return 'BD';
+  if (o.includes('novo')) return 'IN';
+
+  return '-';
 }
 
 function statusPill(status) {
@@ -471,65 +534,50 @@ function statusPill(status) {
   return `<span class="status-pill ${cls}">${esc(s)}</span>`;
 }
 
-async function aprovarAnalise(index) {
-  const item = state.analiseItens[index];
-  const qtd = Number($(`qtdAprovada_${index}`).value || 0);
-  const obs = $(`obsAnalise_${index}`).value;
+async function processarAnaliseBloco() {
+  if (!state.analiseItens.length) {
+    return toast('Carregue os itens antes de confirmar decisões.', 'error');
+  }
 
-  if (qtd <= 0) return toast('Informe a quantidade aprovada.', 'error');
+  const decisoes = [];
 
-  await api('aprovarItem', {
-    idItem: item.idItem,
-    qtdAprovada: qtd,
-    observacaoAnalise: obs
-  });
+  for (const item of state.analiseItens) {
+    const idx = item.__index;
+    const select = $(`decisao_${idx}`);
+    if (!select || !select.value) continue;
 
-  await loadAnalise();
-  await dashboard();
-}
+    const obs = $(`obsAnalise_${idx}`)?.value || '';
 
-async function recusarAnalise(index) {
-  const item = state.analiseItens[index];
-  const obs = $(`obsAnalise_${index}`).value || 'Recusado na análise.';
+    if (select.value === 'recusar' && !obs.trim()) {
+      return toast('Informe observação para os itens recusados.', 'error');
+    }
 
-  await api('recusarItem', {
-    idItem: item.idItem,
-    observacaoAnalise: obs
-  });
+    decisoes.push({
+      idItem: item.idItem,
+      decisao: select.value,
+      qtdIncluida: Number(item.qtdSolicitadaInclusao || 0),
+      observacaoAnalise: obs
+    });
+  }
 
-  await loadAnalise();
-  await dashboard();
-}
+  if (!decisoes.length) {
+    return toast('Nenhuma decisão marcada.', 'error');
+  }
 
-async function incluirInformakon(index) {
-  const item = state.analiseItens[index];
-  const qtd = Number($(`qtdAprovada_${index}`).value || 0);
-  const obs = $(`obsAnalise_${index}`).value;
+  const aprovar = decisoes.filter((d) => d.decisao === 'aprovar').length;
+  const recusar = decisoes.filter((d) => d.decisao === 'recusar').length;
 
-  if (qtd <= 0) return toast('Informe a quantidade incluída.', 'error');
+  const confirmar = confirm(`Confirmar análise em bloco?\n\nAprovar/Incluir: ${aprovar}\nRecusar: ${recusar}\n\nA aprovação atualizará o saldo local da obra.`);
+  if (!confirmar) return;
 
-  await api('marcarIncluidoInformakon', {
-    idItem: item.idItem,
-    qtdIncluida: qtd,
-    observacao: obs
-  });
+  const response = await api('processarAnaliseBloco', { decisoes });
+
+  toast(`Análise processada: ${response.data.aprovados} aprovado(s), ${response.data.recusados} recusado(s).`, 'success');
 
   await loadAnalise();
   await dashboard();
 }
 
-async function marcarCompra(index) {
-  const item = state.analiseItens[index];
-  const numero = $(`numCompra_${index}`).value;
-
-  await api('marcarCompraSolicitada', {
-    idItem: item.idItem,
-    numeroSolicitacaoCompra: numero
-  });
-
-  await loadAnalise();
-  await dashboard();
-}
 
 function ensure() {
   if (!state.apiUrl) throw new Error('Configure a URL da API Apps Script.');

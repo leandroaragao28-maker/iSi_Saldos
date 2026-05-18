@@ -495,3 +495,131 @@ body.busy button:not(.nav) { pointer-events:none; }
   .card-head, .analysis-top { flex-direction:column; }
   .loading-card { left:12px; right:12px; top:12px; max-width:none; }
 }
+
+
+/* v5 - Análise compacta em tabela agrupada por composição */
+.compact-analysis {
+  padding-bottom: 10px;
+}
+
+.analysis-table-groups {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+}
+
+.composition-block {
+  border: 1px solid var(--z200);
+  border-radius: 16px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.composition-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  background: var(--g50);
+  border-bottom: 1px solid #c8e6c9;
+  padding: 12px 14px;
+}
+
+.composition-header strong {
+  display: block;
+  color: var(--g900);
+  margin-bottom: 3px;
+}
+
+.composition-header small {
+  color: var(--z500);
+  line-height: 1.35;
+}
+
+.composition-count {
+  display: inline-flex;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: var(--g100);
+  color: var(--g800);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.analysis-table {
+  font-size: 12px;
+}
+
+.analysis-table th,
+.analysis-table td {
+  padding: 8px;
+}
+
+.analysis-table td:nth-child(4) {
+  min-width: 280px;
+}
+
+.decision-select {
+  min-width: 96px;
+  padding: 7px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.analysis-obs {
+  min-width: 160px;
+  padding: 7px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.origin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  padding: 5px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.origin-oo {
+  background: var(--g100);
+  color: var(--g800);
+}
+
+.origin-bd {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.origin-in {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.line-note {
+  display: block;
+  margin-top: 3px;
+  color: var(--z500);
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.row-finalizada {
+  opacity: .72;
+  background: #fafafa;
+}
+
+.row-finalizada select,
+.row-finalizada input {
+  background: var(--z100);
+}
+
+@media (max-width: 900px) {
+  .composition-header {
+    flex-direction: column;
+  }
+}
