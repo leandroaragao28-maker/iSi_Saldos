@@ -78,6 +78,12 @@
   };
 
   let jsonpId = 0;
+  // Dedup de requisições GET em voo: se a mesma (action+payload) já está pendente,
+  // devolve a mesma Promise em vez de abrir outro <script src="..."> em paralelo.
+  // Cinto e suspensório contra qualquer caminho que dispare a mesma leitura duas
+  // vezes (ex.: render → loadAnalise enquanto outra ainda não respondeu).
+  const inflight = new Map();
+
   function apiGet(action, payload = {}, opts = {}) {
     const key = action + ':' + JSON.stringify(payload);
     if (opts.cacheMs && !opts.bypassCache) {
@@ -86,7 +92,9 @@
     }
     if (!cfg.apiUrl) return mockApi(action, payload);
 
-    return new Promise((resolve, reject) => {
+    if (inflight.has(key)) return inflight.get(key);
+
+    const p = new Promise((resolve, reject) => {
       const cb = '__isi_jsonp_' + (++jsonpId);
       const tag = document.createElement('script');
       const params = new URLSearchParams({
@@ -121,6 +129,10 @@
       };
       document.head.appendChild(tag);
     });
+
+    inflight.set(key, p);
+    p.finally(() => { if (inflight.get(key) === p) inflight.delete(key); });
+    return p;
   }
 
   function apiPost(action, payload = {}) {
@@ -325,7 +337,10 @@
         <div class="rail-foot-info"><strong>${obraAtiva?.gestor || 'Usuário'}</strong><span>${obraAtiva?.nomeObra?.split('—')[0]?.trim() || '—'}</span></div>
       </div>
     `;
-    $('#rail').addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) goTo(b.dataset.go); });
+    // NOTE: o listener de clique do #rail é anexado UMA ÚNICA VEZ em bindNavOnce()
+    // (chamado no DOMContentLoaded). Não anexe aqui — renderRail() roda a cada
+    // render() e duplicaria o handler, fazendo goTo() disparar N vezes por clique
+    // → N requisições paralelas → Apps Script reclama de "pedidos simultâneos".
   }
 
   function renderBottomTabs() {
@@ -335,7 +350,21 @@
         ${icon(n.ic, 20)}<span>${n.label.split(' ')[0]}</span>
         ${n.id === 'analise' && state.dashboard?.pendentes ? `<span class="badge-mini">${state.dashboard.pendentes}</span>` : ''}
       </button>`).join('');
-    $('#bottomTabs').addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) goTo(b.dataset.go); });
+    // Idem renderRail(): listener anexado UMA vez em bindNavOnce().
+  }
+
+  // Anexa os listeners de navegação aos containers estáticos (#rail / #bottomTabs)
+  // apenas uma vez. Como esses elementos vivem no index.html e nunca são recriados,
+  // re-anexar a cada render() acumulava handlers e multiplicava cliques.
+  let __navBound = false;
+  function bindNavOnce() {
+    if (__navBound) return;
+    __navBound = true;
+    const onNavClick = e => { const b = e.target.closest('[data-go]'); if (b) goTo(b.dataset.go); };
+    const rail = $('#rail');
+    const tabs = $('#bottomTabs');
+    if (rail) rail.addEventListener('click', onNavClick);
+    if (tabs) tabs.addEventListener('click', onNavClick);
   }
 
   function renderTopbar() {
@@ -1214,6 +1243,7 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     render();              // shell vazia
+    bindNavOnce();         // listener de navegação UMA vez (ver renderRail)
     initApp();             // carrega tudo
     if (!cfg.apiUrl) setTimeout(() => toast({ kind: 'info', title: 'Modo demo ativo', body: 'Configure a URL da API em Configuração para usar dados reais.' }), 800);
   });
